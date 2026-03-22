@@ -6,17 +6,17 @@
 stateDiagram-v2
     [*] --> None
 
-    None --> Running : mark_running()
-    None --> Skipped : trigger rule evaluates Skip
-    None --> UpstreamFailed : trigger rule evaluates UpstreamFailed
+    None --> Running : mark running
+    None --> Skipped : trigger rule Skip
+    None --> UpstreamFailed : trigger rule UpstreamFailed
 
-    Scheduled --> Running : mark_running()
+    Scheduled --> Running : mark running
 
-    Running --> Success : mark_success()
-    Running --> Failed : mark_failed()<br>(retries exhausted)
-    Running --> UpForRetry : mark_failed()<br>(retries remaining)
+    Running --> Success : mark success
+    Running --> Failed : mark failed<br>retries exhausted
+    Running --> UpForRetry : mark failed<br>retries remaining
 
-    UpForRetry --> Running : mark_running()
+    UpForRetry --> Running : mark running
 
     Success --> [*]
     Failed --> [*]
@@ -78,10 +78,10 @@ Notes:
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Queued : DagRun::new()
+    [*] --> Queued : new run created
     Queued --> Running : first task starts
-    Running --> Success : all tasks terminal,<br>none failed
-    Running --> Failed : all tasks terminal,<br>any failed
+    Running --> Success : all tasks terminal<br>none failed
+    Running --> Failed : all tasks terminal<br>any failed
     Success --> [*]
     Failed --> [*]
 ```

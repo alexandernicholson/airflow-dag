@@ -37,7 +37,7 @@ sequenceDiagram
     Note over User,XCom: Cycle repeats until all tasks are terminal
 
     User->>Sched: call(GetRunState)
-    Sched-->>User: DagRunState::Success
+    Sched-->>User: Success
 ```
 
 ## Actor Mapping

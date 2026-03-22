@@ -142,9 +142,9 @@ flowchart TD
     ALL_S -->|Yes| READY
     ALL_S -->|No| FAIL{"failed > 0 or<br>upstream_failed > 0?"}
     FAIL -->|Yes| UF["UpstreamFailed"]
-    FAIL -->|No| SKIP_CHECK{"skipped > 0 and<br>done == total?"}
-    SKIP_CHECK -->|Yes| SKIP["Skip"]
-    SKIP_CHECK -->|No| WAIT["Waiting"]
+    FAIL -->|No| DONE{"done == total?"}
+    DONE -->|Yes| SKIP["Skip"]
+    DONE -->|No| WAIT["Waiting"]
 
     style READY fill:#51cf66,color:#fff
     style UF fill:#ff6b6b,color:#fff
