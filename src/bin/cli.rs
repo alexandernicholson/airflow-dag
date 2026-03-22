@@ -38,6 +38,9 @@ enum Commands {
         /// Which demo DAG to render: etl, diamond, ml
         #[arg(default_value = "diamond")]
         dag: String,
+        /// Render vertically (top-to-bottom) instead of horizontally (left-to-right)
+        #[arg(short, long)]
+        vertical: bool,
     },
 }
 
@@ -47,7 +50,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     match cli.command {
         Some(Commands::Demo) => run_demo().await?,
-        Some(Commands::Diagram { dag }) => print_diagram(&dag),
+        Some(Commands::Diagram { dag, vertical }) => print_diagram(&dag, vertical),
         Some(Commands::Tui) | None => run_tui()?,
     }
 
@@ -877,8 +880,7 @@ fn render_status_bar(f: &mut ratatui::Frame, _app: &App, area: Rect) {
 // Diagram renderer (stdout)
 // =============================================================================
 
-#[allow(clippy::too_many_lines)]
-fn print_diagram(dag_name: &str) {
+fn print_diagram(dag_name: &str, vertical: bool) {
     let dag = match dag_name {
         "etl" => build_etl_dag(),
         "diamond" => build_diamond_dag(),
@@ -890,12 +892,24 @@ fn print_diagram(dag_name: &str) {
     };
 
     let sorted = dag.topological_sort().unwrap();
+    let layers = compute_layers(&dag, &sorted);
 
-    // Assign layers (depth from root)
-    let mut depth: std::collections::HashMap<&TaskId, usize> = std::collections::HashMap::new();
+    print_title(&dag);
+
+    if vertical {
+        print_vertical(&dag, &layers);
+    } else {
+        print_horizontal(&dag, &layers);
+    }
+
+    print_summary(&dag, &sorted);
+}
+
+fn compute_layers<'a>(dag: &Dag, sorted: &'a [TaskId]) -> Vec<Vec<&'a TaskId>> {
+    let mut depth: HashMap<&TaskId, usize> = HashMap::new();
     let mut layers: Vec<Vec<&TaskId>> = Vec::new();
 
-    for task_id in &sorted {
+    for task_id in sorted {
         let upstream = dag.upstream_of(task_id);
         let d = if upstream.is_empty() {
             0
@@ -912,173 +926,19 @@ fn print_diagram(dag_name: &str) {
         }
         layers[d].push(task_id);
     }
+    layers
+}
 
-    // Compute column width
-    let col_width = 22;
-    let max_cols = layers.iter().map(Vec::len).max().unwrap_or(1);
-    let total_width = max_cols * col_width;
-
-    // Title
+fn print_title(dag: &Dag) {
     println!();
     let title = format!("DAG: {}", dag.dag_id);
-    let pad = (total_width.saturating_sub(title.len())) / 2;
-    println!("{}╔{}╗", " ".repeat(pad), "═".repeat(title.len() + 2));
-    println!("{}║ {} ║", " ".repeat(pad), title);
-    println!("{}╚{}╝", " ".repeat(pad), "═".repeat(title.len() + 2));
+    println!("╔{}╗", "═".repeat(title.len() + 2));
+    println!("║ {title} ║");
+    println!("╚{}╝", "═".repeat(title.len() + 2));
     println!();
+}
 
-    for (layer_idx, layer) in layers.iter().enumerate() {
-        // Draw connectors from previous layer
-        if layer_idx > 0 {
-            // Find which tasks in this layer connect to which in the previous
-            let prev = &layers[layer_idx - 1];
-
-            // Draw vertical lines
-            let mut connector_line = vec![' '; total_width];
-            let mut arrow_line = vec![' '; total_width];
-
-            for task_id in layer {
-                let upstream = dag.upstream_of(task_id);
-                let task_col_idx = layer.iter().position(|t| t == task_id).unwrap();
-                let task_center = center_pos(task_col_idx, layer.len(), col_width, total_width);
-
-                for up_id in &upstream {
-                    // Find which layer and position the upstream is in
-                    if let Some(up_col_idx) = prev.iter().position(|t| *t == up_id) {
-                        let up_center =
-                            center_pos(up_col_idx, prev.len(), col_width, total_width);
-
-                        // Draw horizontal connector
-                        let (left, right) = if up_center <= task_center {
-                            (up_center, task_center)
-                        } else {
-                            (task_center, up_center)
-                        };
-
-                        if up_center == task_center {
-                            // Straight vertical
-                            if connector_line[task_center] == ' ' {
-                                connector_line[task_center] = '│';
-                            }
-                        } else {
-                            // Angled connector
-                            for ch in &mut connector_line[left..=right] {
-                                if *ch == ' ' {
-                                    *ch = '─';
-                                } else if *ch == '│' {
-                                    *ch = '┼';
-                                }
-                            }
-                            connector_line[up_center] = if connector_line[up_center] == '─' {
-                                '┴'
-                            } else {
-                                '│'
-                            };
-                            connector_line[task_center] = if connector_line[task_center] == '─' {
-                                '┬'
-                            } else {
-                                '│'
-                            };
-                        }
-                    }
-                }
-
-                if arrow_line[task_center] == ' ' {
-                    arrow_line[task_center] = '▼';
-                }
-            }
-
-            let conn_str: String = connector_line.iter().collect();
-            let arrow_str: String = arrow_line.iter().collect();
-            println!("{}", conn_str.trim_end());
-            println!("{}", arrow_str.trim_end());
-        }
-
-        // Draw task boxes
-        let mut line1 = vec![' '; total_width]; // top border
-        let mut line2 = vec![' '; total_width]; // task name
-        let mut line3 = vec![' '; total_width]; // attributes
-        let mut line4 = vec![' '; total_width]; // bottom border
-
-        for (col_idx, task_id) in layer.iter().enumerate() {
-            let task = dag.get_task(task_id).unwrap();
-            let center = center_pos(col_idx, layer.len(), col_width, total_width);
-            let box_width = 18;
-            let left = center.saturating_sub(box_width / 2);
-
-            // Top border: ┌──────────────────┐
-            let top = format!("┌{}┐", "─".repeat(box_width));
-            for (i, ch) in top.chars().enumerate() {
-                if left + i < total_width {
-                    line1[left + i] = ch;
-                }
-            }
-
-            // Task name: │   task_name      │
-            let name = task_id.0.clone();
-            let name_pad = box_width.saturating_sub(name.len());
-            let name_left = name_pad / 2;
-            let name_right = name_pad - name_left;
-            let mid = format!(
-                "│{}{}{}│",
-                " ".repeat(name_left),
-                name,
-                " ".repeat(name_right)
-            );
-            for (i, ch) in mid.chars().enumerate() {
-                if left + i < total_width {
-                    line2[left + i] = ch;
-                }
-            }
-
-            // Attributes
-            let mut attrs = Vec::new();
-            if task.trigger_rule != TriggerRule::AllSuccess {
-                attrs.push(format!("{:?}", task.trigger_rule));
-            }
-            if task.retries > 0 {
-                attrs.push(format!("retries={}", task.retries));
-            }
-            let attr_str = if attrs.is_empty() {
-                String::new()
-            } else {
-                attrs.join(" ")
-            };
-            let attr_pad = box_width.saturating_sub(attr_str.len());
-            let attr_left = attr_pad / 2;
-            let attr_right = attr_pad - attr_left;
-            let attr_line = format!(
-                "│{}{}{}│",
-                " ".repeat(attr_left),
-                attr_str,
-                " ".repeat(attr_right)
-            );
-            for (i, ch) in attr_line.chars().enumerate() {
-                if left + i < total_width {
-                    line3[left + i] = ch;
-                }
-            }
-
-            // Bottom border: └──────────────────┘
-            let bot = format!("└{}┘", "─".repeat(box_width));
-            for (i, ch) in bot.chars().enumerate() {
-                if left + i < total_width {
-                    line4[left + i] = ch;
-                }
-            }
-        }
-
-        let s1: String = line1.iter().collect();
-        let s2: String = line2.iter().collect();
-        let s3: String = line3.iter().collect();
-        let s4: String = line4.iter().collect();
-        println!("{}", s1.trim_end());
-        println!("{}", s2.trim_end());
-        println!("{}", s3.trim_end());
-        println!("{}", s4.trim_end());
-    }
-
-    // Summary
+fn print_summary(dag: &Dag, sorted: &[TaskId]) {
     println!();
     println!("  Tasks: {}", dag.task_count());
     println!(
@@ -1108,12 +968,291 @@ fn print_diagram(dag_name: &str) {
     println!();
 }
 
-const fn center_pos(col_idx: usize, num_cols: usize, _col_width: usize, total_width: usize) -> usize {
+// =============================================================================
+// Horizontal layout (left-to-right) — DEFAULT
+// =============================================================================
+
+#[allow(clippy::too_many_lines, clippy::needless_range_loop)]
+fn print_horizontal(dag: &Dag, layers: &[Vec<&TaskId>]) {
+    let box_width = 20;
+    let h_gap = 5; // gap between layer columns (for arrows)
+    let row_height = 4; // lines per task box (top, name, attr, bottom)
+    let v_gap = 1; // blank lines between tasks in same layer
+
+    // Max tasks in any layer determines grid height
+    let max_rows = layers.iter().map(Vec::len).max().unwrap_or(1);
+    let total_rows = max_rows * (row_height + v_gap);
+
+    // Build a 2D character grid
+    let total_cols = layers.len() * (box_width + h_gap);
+    let mut grid: Vec<Vec<char>> = vec![vec![' '; total_cols]; total_rows];
+
+    // Track center positions for connectors: (layer_idx, task_idx) -> (col, row)
+    let mut centers: HashMap<&TaskId, (usize, usize)> = HashMap::new();
+
+    for (layer_idx, layer) in layers.iter().enumerate() {
+        let col_start = layer_idx * (box_width + h_gap);
+        let layer_size = layer.len();
+
+        // Vertically center tasks within the grid
+        let total_task_height = layer_size * row_height + (layer_size.saturating_sub(1)) * v_gap;
+        let row_offset = (total_rows.saturating_sub(total_task_height)) / 2;
+
+        for (task_idx, task_id) in layer.iter().enumerate() {
+            let row_start = row_offset + task_idx * (row_height + v_gap);
+            // Draw box
+            draw_box(&mut grid, row_start, col_start, box_width, &task_id.0, &label_attr(dag, task_id));
+
+            // Center point for connectors (right edge for outgoing, left edge for incoming)
+            let center_row = row_start + row_height / 2;
+            centers.insert(task_id, (col_start, center_row));
+        }
+    }
+
+    // Draw connectors (horizontal arrows between layers)
+    for (layer_idx, layer) in layers.iter().enumerate() {
+        if layer_idx == 0 {
+            continue;
+        }
+
+        for task_id in layer {
+            let upstream = dag.upstream_of(task_id);
+            let &(dest_col, dest_row) = centers.get(task_id).unwrap();
+
+            for up_id in &upstream {
+                if let Some(&(src_col, src_row)) = centers.get(up_id) {
+                    let arrow_start = src_col + box_width;
+                    let arrow_end = dest_col;
+
+                    if src_row == dest_row {
+                        // Straight horizontal arrow
+                        for c in (arrow_start + 1)..arrow_end {
+                            if grid[src_row][c] == ' ' {
+                                grid[src_row][c] = '─';
+                            }
+                        }
+                        if arrow_end > 0 {
+                            grid[src_row][arrow_end - 1] = '▶';
+                        }
+                    } else {
+                        // L-shaped or Z-shaped connector
+                        let mid_col = arrow_start + (arrow_end - arrow_start) / 2;
+
+                        // Horizontal from source to mid
+                        for c in (arrow_start + 1)..=mid_col {
+                            if grid[src_row][c] == ' ' {
+                                grid[src_row][c] = '─';
+                            }
+                        }
+
+                        // Vertical from src_row to dest_row at mid_col
+                        let (top, bot) = if src_row < dest_row {
+                            (src_row, dest_row)
+                        } else {
+                            (dest_row, src_row)
+                        };
+                        for r in top..=bot {
+                            if grid[r][mid_col] == '─' {
+                                grid[r][mid_col] = '┼';
+                            } else if grid[r][mid_col] == ' ' {
+                                grid[r][mid_col] = '│';
+                            }
+                        }
+                        // Corner at source
+                        grid[src_row][mid_col] = if src_row < dest_row { '┐' } else { '┘' };
+                        // Corner at dest
+                        grid[dest_row][mid_col] = if src_row < dest_row { '└' } else { '┌' };
+
+                        // Horizontal from mid to dest
+                        for c in (mid_col + 1)..arrow_end {
+                            if grid[dest_row][c] == ' ' {
+                                grid[dest_row][c] = '─';
+                            }
+                        }
+                        if arrow_end > 0 {
+                            grid[dest_row][arrow_end - 1] = '▶';
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Print grid
+    for row in &grid {
+        let line: String = row.iter().collect();
+        let trimmed = line.trim_end();
+        if !trimmed.is_empty() {
+            println!("{trimmed}");
+        }
+    }
+}
+
+fn label_attr(dag: &Dag, task_id: &TaskId) -> String {
+    let task = dag.get_task(task_id).unwrap();
+    let mut attrs = Vec::new();
+    if task.trigger_rule != TriggerRule::AllSuccess {
+        attrs.push(format!("{:?}", task.trigger_rule));
+    }
+    if task.retries > 0 {
+        attrs.push(format!("retries={}", task.retries));
+    }
+    attrs.join(" ")
+}
+
+fn draw_box(grid: &mut [Vec<char>], row: usize, col: usize, width: usize, name: &str, attr: &str) {
+    let inner = width - 2; // space inside │...│
+
+    // Top: ┌────────────────────┐
+    set_str(grid, row, col, &format!("┌{}┐", "─".repeat(inner)));
+
+    // Name: │    task_name       │
+    let name_trunc: String = name.chars().take(inner).collect();
+    let pad = inner.saturating_sub(name_trunc.len());
+    let lpad = pad / 2;
+    let rpad = pad - lpad;
+    set_str(grid, row + 1, col, &format!("│{}{}{}│", " ".repeat(lpad), name_trunc, " ".repeat(rpad)));
+
+    // Attr: │    attr_str        │
+    let attr_trunc: String = attr.chars().take(inner).collect();
+    let attr_space = inner.saturating_sub(attr_trunc.len());
+    let attr_left_pad = attr_space / 2;
+    let attr_right_pad = attr_space - attr_left_pad;
+    set_str(grid, row + 2, col, &format!("│{}{}{}│", " ".repeat(attr_left_pad), attr_trunc, " ".repeat(attr_right_pad)));
+
+    // Bottom: └────────────────────┘
+    set_str(grid, row + 3, col, &format!("└{}┘", "─".repeat(inner)));
+}
+
+fn set_str(grid: &mut [Vec<char>], row: usize, col: usize, s: &str) {
+    for (i, ch) in s.chars().enumerate() {
+        if row < grid.len() && col + i < grid[row].len() {
+            grid[row][col + i] = ch;
+        }
+    }
+}
+
+// =============================================================================
+// Vertical layout (top-to-bottom) — with --vertical flag
+// =============================================================================
+
+#[allow(clippy::too_many_lines)]
+fn print_vertical(dag: &Dag, layers: &[Vec<&TaskId>]) {
+    let col_width = 22;
+    let max_cols = layers.iter().map(Vec::len).max().unwrap_or(1);
+    let total_width = max_cols * col_width;
+
+    for (layer_idx, layer) in layers.iter().enumerate() {
+        // Draw connectors from previous layer
+        if layer_idx > 0 {
+            let prev = &layers[layer_idx - 1];
+            let mut connector_line = vec![' '; total_width];
+            let mut arrow_line = vec![' '; total_width];
+
+            for task_id in layer {
+                let upstream = dag.upstream_of(task_id);
+                let task_col_idx = layer.iter().position(|t| t == task_id).unwrap();
+                let task_center = vcenter(task_col_idx, layer.len(), total_width);
+
+                for up_id in &upstream {
+                    if let Some(up_col_idx) = prev.iter().position(|t| *t == up_id) {
+                        let up_center = vcenter(up_col_idx, prev.len(), total_width);
+                        let (left, right) = if up_center <= task_center {
+                            (up_center, task_center)
+                        } else {
+                            (task_center, up_center)
+                        };
+
+                        if up_center == task_center {
+                            if connector_line[task_center] == ' ' {
+                                connector_line[task_center] = '│';
+                            }
+                        } else {
+                            for ch in &mut connector_line[left..=right] {
+                                if *ch == ' ' { *ch = '─'; }
+                                else if *ch == '│' { *ch = '┼'; }
+                            }
+                            connector_line[up_center] = if connector_line[up_center] == '─' { '┴' } else { '│' };
+                            connector_line[task_center] = if connector_line[task_center] == '─' { '┬' } else { '│' };
+                        }
+                    }
+                }
+
+                if arrow_line[task_center] == ' ' {
+                    arrow_line[task_center] = '▼';
+                }
+            }
+
+            let conn_str: String = connector_line.iter().collect();
+            let arrow_str: String = arrow_line.iter().collect();
+            println!("{}", conn_str.trim_end());
+            println!("{}", arrow_str.trim_end());
+        }
+
+        // Draw task boxes
+        let box_width = 18;
+        let mut line1 = vec![' '; total_width];
+        let mut line2 = vec![' '; total_width];
+        let mut line3 = vec![' '; total_width];
+        let mut line4 = vec![' '; total_width];
+
+        for (col_idx, task_id) in layer.iter().enumerate() {
+            let task = dag.get_task(task_id).unwrap();
+            let center = vcenter(col_idx, layer.len(), total_width);
+            let left = center.saturating_sub(box_width / 2);
+
+            let top = format!("┌{}┐", "─".repeat(box_width));
+            for (i, ch) in top.chars().enumerate() {
+                if left + i < total_width { line1[left + i] = ch; }
+            }
+
+            let name = &task_id.0;
+            let name_pad = box_width.saturating_sub(name.len());
+            let name_left = name_pad / 2;
+            let name_right = name_pad - name_left;
+            let mid = format!("│{}{}{}│", " ".repeat(name_left), name, " ".repeat(name_right));
+            for (i, ch) in mid.chars().enumerate() {
+                if left + i < total_width { line2[left + i] = ch; }
+            }
+
+            let mut attrs = Vec::new();
+            if task.trigger_rule != TriggerRule::AllSuccess {
+                attrs.push(format!("{:?}", task.trigger_rule));
+            }
+            if task.retries > 0 {
+                attrs.push(format!("retries={}", task.retries));
+            }
+            let attr_str = attrs.join(" ");
+            let attr_pad = box_width.saturating_sub(attr_str.len());
+            let attr_left = attr_pad / 2;
+            let attr_right = attr_pad - attr_left;
+            let attr_line = format!("│{}{}{}│", " ".repeat(attr_left), attr_str, " ".repeat(attr_right));
+            for (i, ch) in attr_line.chars().enumerate() {
+                if left + i < total_width { line3[left + i] = ch; }
+            }
+
+            let bot = format!("└{}┘", "─".repeat(box_width));
+            for (i, ch) in bot.chars().enumerate() {
+                if left + i < total_width { line4[left + i] = ch; }
+            }
+        }
+
+        let s1: String = line1.iter().collect();
+        let s2: String = line2.iter().collect();
+        let s3: String = line3.iter().collect();
+        let s4: String = line4.iter().collect();
+        println!("{}", s1.trim_end());
+        println!("{}", s2.trim_end());
+        println!("{}", s3.trim_end());
+        println!("{}", s4.trim_end());
+    }
+}
+
+const fn vcenter(col_idx: usize, num_cols: usize, total_width: usize) -> usize {
     if num_cols == 1 {
         total_width / 2
     } else {
-        let usable = total_width;
-        let spacing = usable / num_cols;
+        let spacing = total_width / num_cols;
         spacing / 2 + col_idx * spacing
     }
 }
