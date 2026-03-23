@@ -2,7 +2,7 @@
 
 A DAG-based task orchestration engine for Rust, built on the [Rebar](https://github.com/alexandernicholson/rebar) actor runtime. Production-grade scheduling semantics — trigger rules, state machines, XCom, retries — as native Rust types with actor-based execution.
 
-> `165 tests, 0 clippy warnings (pedantic)`
+> `174 tests, 0 clippy warnings (pedantic)`
 
 ## Overview
 
@@ -103,6 +103,7 @@ cargo run --bin dag-cli -- tui
 - **Scheduler actor** -- GenServer that drives DAG execution via tick/message loop
 - **XCom Agent** -- Rebar Agent for shared XCom state (push/pull/clear via closures)
 - **DagHandle** -- async API for querying run state and waiting for completion
+- **Distributed execution** -- coordinator/worker architecture for scaling across machines via Rebar clustering
 - **Mathematical verification** -- exhaustive state machine proofs (transition matrix, trigger rule completeness)
 
 ## Documentation
@@ -111,6 +112,7 @@ cargo run --bin dag-cli -- tui
 - [State Machine](docs/state-machine.md) -- task and DAG run state transitions
 - [Trigger Rules](docs/trigger-rules.md) -- all 12 rules with truth tables
 - [Rebar Integration](docs/rebar-integration.md) -- actor model, message flow, XCom Agent
+- [Distributed Execution](docs/distributed.md) -- coordinator/worker scaling across machines
 
 ## Dependencies
 
