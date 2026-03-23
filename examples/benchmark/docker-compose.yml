@@ -1,0 +1,28 @@
+services:
+  # Baseline: single runtime, limited to 1 CPU core
+  single:
+    build:
+      context: ../..
+      dockerfile: examples/benchmark/Dockerfile
+    command: ["single"]
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+    volumes:
+      - ./output-single:/app/output
+
+  # Distributed: 5 runtimes, gets 4 CPU cores
+  distributed:
+    build:
+      context: ../..
+      dockerfile: examples/benchmark/Dockerfile
+    command: ["distributed"]
+    deploy:
+      resources:
+        limits:
+          cpus: "4.0"
+          memory: 2G
+    volumes:
+      - ./output-distributed:/app/output
