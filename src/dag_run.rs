@@ -34,6 +34,7 @@ pub struct DagRun {
 
 impl DagRun {
     /// Create a new DAG run. All tasks start in `TaskState::None`.
+    #[must_use]
     pub fn new(dag: Dag, run_id: impl Into<String>, logical_date: DateTime<Utc>) -> Self {
         let task_states: HashMap<TaskId, TaskState> = dag
             .task_ids()
@@ -57,6 +58,7 @@ impl DagRun {
     }
 
     /// Get the current state of a task.
+    #[must_use]
     pub fn task_state(&self, id: &TaskId) -> TaskState {
         self.task_states
             .get(id)
@@ -65,21 +67,27 @@ impl DagRun {
     }
 
     /// Get the overall run state.
+    #[must_use]
     pub const fn run_state(&self) -> DagRunState {
         self.state
     }
 
     /// Get a reference to the underlying DAG.
+    #[must_use]
     pub const fn dag(&self) -> &Dag {
         &self.dag
     }
 
     /// Get the attempt count for a task.
+    #[must_use]
     pub fn attempt_count(&self, id: &TaskId) -> u32 {
         self.attempt_counts.get(id).copied().unwrap_or(0)
     }
 
     /// Mark a task as running. Valid from `None`, `Scheduled`, or `UpForRetry`.
+    ///
+    /// # Errors
+    /// Returns `DagError::InvalidStateTransition` if the task is not in a valid state.
     pub fn mark_running(&mut self, id: &TaskId) -> Result<(), DagError> {
         let current = self.task_state(id);
         match current {
@@ -98,6 +106,9 @@ impl DagRun {
     }
 
     /// Mark a task as successful. Valid from Running.
+    ///
+    /// # Errors
+    /// Returns `DagError::InvalidStateTransition` if the task is not in `Running` state.
     pub fn mark_success(&mut self, id: &TaskId) -> Result<(), DagError> {
         let current = self.task_state(id);
         if current != TaskState::Running {
@@ -113,6 +124,9 @@ impl DagRun {
     }
 
     /// Mark a task as failed. Valid from Running.
+    ///
+    /// # Errors
+    /// Returns `DagError::InvalidStateTransition` if the task is not in `Running` state.
     pub fn mark_failed(&mut self, id: &TaskId) -> Result<(), DagError> {
         let current = self.task_state(id);
         if current != TaskState::Running {
@@ -134,6 +148,9 @@ impl DagRun {
     }
 
     /// Mark a task as skipped.
+    ///
+    /// # Errors
+    /// This method currently always succeeds but returns `Result` for API consistency.
     pub fn mark_skipped(&mut self, id: &TaskId) -> Result<(), DagError> {
         self.task_states.insert(id.clone(), TaskState::Skipped);
         self.update_run_state();
@@ -160,6 +177,10 @@ impl DagRun {
     }
 
     /// Get tasks that are ready to run based on trigger rule evaluation.
+    ///
+    /// # Panics
+    /// Panics if a task ID present in the DAG run has no corresponding task definition.
+    #[must_use]
     pub fn ready_tasks(&self) -> Vec<TaskId> {
         let mut ready = Vec::new();
         for id in self.dag.task_ids() {
@@ -181,6 +202,9 @@ impl DagRun {
     }
 
     /// Run one scheduler tick: propagate UpstreamFailed/Skip states and return newly-ready tasks.
+    ///
+    /// # Panics
+    /// Panics if a task ID present in the DAG run has no corresponding task definition.
     pub fn tick(&mut self) -> Vec<TaskId> {
         // First pass: propagate UpstreamFailed and Skip
         let mut changes = Vec::new();
@@ -214,6 +238,7 @@ impl DagRun {
     }
 
     /// Check if the DAG run is complete (all tasks in terminal states).
+    #[must_use]
     pub fn is_complete(&self) -> bool {
         self.task_states.values().all(TaskState::is_finished)
     }
@@ -252,6 +277,7 @@ impl DagRun {
     }
 
     /// Pull an `XCom` value.
+    #[must_use]
     pub fn xcom_pull(&self, task_id: &TaskId, key: &str) -> Option<&serde_json::Value> {
         self.xcom.pull(task_id, key)
     }

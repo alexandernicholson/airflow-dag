@@ -3,6 +3,7 @@
 pub struct TaskId(pub String);
 
 impl TaskId {
+    #[must_use]
     pub fn new(id: impl Into<String>) -> Self {
         Self(id.into())
     }
@@ -25,6 +26,7 @@ impl From<&str> for TaskId {
 pub struct GroupId(pub String);
 
 impl GroupId {
+    #[must_use]
     pub fn new(id: impl Into<String>) -> Self {
         Self(id.into())
     }

@@ -50,6 +50,7 @@ pub struct UpstreamSummary {
 
 impl UpstreamSummary {
     /// Build a summary from a slice of upstream task states.
+    #[must_use]
     pub fn from_states(states: &[TaskState]) -> Self {
         let mut summary = Self {
             total: states.len(),
@@ -103,6 +104,7 @@ pub enum TriggerEvaluation {
 
 impl TriggerRule {
     /// Evaluate this trigger rule against the given upstream summary.
+    #[must_use]
     #[allow(clippy::too_many_lines)]
     pub const fn evaluate(&self, summary: &UpstreamSummary) -> TriggerEvaluation {
         // No upstreams — vacuously satisfied for all rules.

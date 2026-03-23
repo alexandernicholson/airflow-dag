@@ -16,6 +16,7 @@ pub struct TaskContext {
 }
 
 impl TaskContext {
+    #[must_use]
     pub fn new(
         task_id: TaskId,
         run_id: String,
@@ -37,6 +38,7 @@ impl TaskContext {
     }
 
     /// Get all `XCom` values produced by this task.
+    #[must_use]
     pub fn xcom_values(&self) -> Option<&HashMap<String, serde_json::Value>> {
         self.xcom.pull_all(&self.task_id)
     }

@@ -17,6 +17,7 @@ pub struct Dag {
 }
 
 impl Dag {
+    #[must_use]
     pub fn new(dag_id: impl Into<String>) -> Self {
         Self {
             dag_id: dag_id.into(),
@@ -27,6 +28,9 @@ impl Dag {
     }
 
     /// Add a task to the DAG. Returns error if `task_id` already exists.
+    ///
+    /// # Errors
+    /// Returns `DagError::DuplicateTaskId` if a task with the same ID already exists.
     pub fn add_task(&mut self, task: Task) -> Result<(), DagError> {
         if self.tasks.contains_key(&task.task_id) {
             return Err(DagError::DuplicateTaskId(task.task_id));
@@ -39,6 +43,7 @@ impl Dag {
     }
 
     /// Get a reference to a task by its ID.
+    #[must_use]
     pub fn get_task(&self, id: &TaskId) -> Option<&Task> {
         self.tasks.get(id)
     }
@@ -49,11 +54,16 @@ impl Dag {
     }
 
     /// Number of tasks in the DAG.
+    #[must_use]
     pub fn task_count(&self) -> usize {
         self.tasks.len()
     }
 
     /// Set `from` as upstream of `to` (from >> to).
+    ///
+    /// # Errors
+    /// Returns `DagError::SelfDependency` if `from` and `to` are the same task.
+    /// Returns `DagError::TaskNotFound` if either task ID is not in the DAG.
     pub fn set_downstream(&mut self, from: &TaskId, to: &TaskId) -> Result<(), DagError> {
         if from == to {
             return Err(DagError::SelfDependency(from.clone()));
@@ -76,11 +86,19 @@ impl Dag {
     }
 
     /// Set `upstream_task` as upstream of `task` (`upstream_task` >> task).
+    ///
+    /// # Errors
+    /// Returns `DagError::SelfDependency` if the task IDs are the same.
+    /// Returns `DagError::TaskNotFound` if either task ID is not in the DAG.
     pub fn set_upstream(&mut self, task: &TaskId, upstream_task: &TaskId) -> Result<(), DagError> {
         self.set_downstream(upstream_task, task)
     }
 
     /// Create a sequential chain: tasks[0] >> tasks[1] >> ... >> tasks[n].
+    ///
+    /// # Errors
+    /// Returns `DagError::SelfDependency` or `DagError::TaskNotFound` if any
+    /// pair in the chain violates dependency constraints.
     pub fn chain(&mut self, tasks: &[TaskId]) -> Result<(), DagError> {
         for pair in tasks.windows(2) {
             self.set_downstream(&pair[0], &pair[1])?;
@@ -89,6 +107,7 @@ impl Dag {
     }
 
     /// Get downstream task IDs for a given task.
+    #[must_use]
     pub fn downstream_of(&self, id: &TaskId) -> HashSet<TaskId> {
         self.downstream
             .get(id)
@@ -97,6 +116,7 @@ impl Dag {
     }
 
     /// Get upstream task IDs for a given task.
+    #[must_use]
     pub fn upstream_of(&self, id: &TaskId) -> HashSet<TaskId> {
         self.upstream
             .get(id)
@@ -105,6 +125,7 @@ impl Dag {
     }
 
     /// Get root tasks (no upstream dependencies).
+    #[must_use]
     pub fn roots(&self) -> Vec<TaskId> {
         self.tasks
             .keys()
@@ -114,6 +135,7 @@ impl Dag {
     }
 
     /// Get leaf tasks (no downstream dependencies).
+    #[must_use]
     pub fn leaves(&self) -> Vec<TaskId> {
         self.tasks
             .keys()
@@ -124,6 +146,9 @@ impl Dag {
 
     /// Topological sort using Kahn's algorithm.
     /// Returns an error if the graph contains a cycle.
+    ///
+    /// # Errors
+    /// Returns `DagError::CycleDetected` if the graph contains a cycle.
     pub fn topological_sort(&self) -> Result<Vec<TaskId>, DagError> {
         let mut in_degree: HashMap<TaskId, usize> = HashMap::new();
         for id in self.tasks.keys() {
@@ -170,6 +195,9 @@ impl Dag {
     }
 
     /// Validate the DAG (checks for cycles and structural integrity).
+    ///
+    /// # Errors
+    /// Returns `DagError::CycleDetected` if the graph contains a cycle.
     pub fn validate(&self) -> Result<(), DagError> {
         self.topological_sort()?;
         Ok(())

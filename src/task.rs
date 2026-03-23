@@ -29,6 +29,7 @@ pub struct TaskBuilder {
 }
 
 impl TaskBuilder {
+    #[must_use]
     pub fn new(task_id: impl Into<String>) -> Self {
         Self {
             task_id: TaskId::new(task_id),
@@ -42,41 +43,49 @@ impl TaskBuilder {
         }
     }
 
+    #[must_use]
     pub const fn trigger_rule(mut self, rule: TriggerRule) -> Self {
         self.trigger_rule = rule;
         self
     }
 
+    #[must_use]
     pub const fn retries(mut self, n: u32) -> Self {
         self.retries = n;
         self
     }
 
+    #[must_use]
     pub const fn retry_delay(mut self, d: Duration) -> Self {
         self.retry_delay = d;
         self
     }
 
+    #[must_use]
     pub const fn execution_timeout(mut self, d: Duration) -> Self {
         self.execution_timeout = Some(d);
         self
     }
 
+    #[must_use]
     pub const fn priority_weight(mut self, w: i32) -> Self {
         self.priority_weight = w;
         self
     }
 
+    #[must_use]
     pub fn pool(mut self, p: impl Into<String>) -> Self {
         self.pool = Some(p.into());
         self
     }
 
+    #[must_use]
     pub fn group_id(mut self, g: GroupId) -> Self {
         self.group_id = Some(g);
         self
     }
 
+    #[must_use]
     pub fn build(self) -> Task {
         Task {
             task_id: self.task_id,
@@ -92,6 +101,7 @@ impl TaskBuilder {
 }
 
 impl Task {
+    #[must_use]
     pub fn builder(task_id: impl Into<String>) -> TaskBuilder {
         TaskBuilder::new(task_id)
     }

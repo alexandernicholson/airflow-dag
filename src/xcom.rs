@@ -11,6 +11,7 @@ pub struct XComStore {
 }
 
 impl XComStore {
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
@@ -24,11 +25,13 @@ impl XComStore {
     }
 
     /// Pull a value for a task by key.
+    #[must_use]
     pub fn pull(&self, task_id: &TaskId, key: &str) -> Option<&serde_json::Value> {
         self.store.get(task_id)?.get(key)
     }
 
     /// Pull all key-value pairs for a task.
+    #[must_use]
     pub fn pull_all(&self, task_id: &TaskId) -> Option<&HashMap<String, serde_json::Value>> {
         self.store.get(task_id)
     }

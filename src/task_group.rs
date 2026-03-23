@@ -27,6 +27,7 @@ pub struct TaskGroup {
 }
 
 impl TaskGroup {
+    #[must_use]
     pub fn new(group_id: impl Into<String>) -> Self {
         Self {
             group_id: GroupId::new(group_id),
@@ -37,27 +38,32 @@ impl TaskGroup {
         }
     }
 
+    #[must_use]
     pub const fn with_prefix(mut self, prefix: bool) -> Self {
         self.prefix_group_id = prefix;
         self
     }
 
+    #[must_use]
     pub fn with_defaults(mut self, defaults: TaskDefaults) -> Self {
         self.defaults = defaults;
         self
     }
 
+    #[must_use]
     pub fn add_task(mut self, task: Task) -> Self {
         self.tasks.push(task);
         self
     }
 
+    #[must_use]
     pub fn add_child_group(mut self, group: Self) -> Self {
         self.children.push(group);
         self
     }
 
     /// Compute the qualified task ID by prepending group prefix(es).
+    #[must_use]
     pub fn qualified_task_id(&self, local_id: &str) -> TaskId {
         if self.prefix_group_id {
             TaskId::new(format!("{}.{}", self.group_id.0, local_id))
@@ -67,6 +73,7 @@ impl TaskGroup {
     }
 
     /// Get all task IDs in this group and nested children (fully qualified).
+    #[must_use]
     pub fn all_task_ids(&self) -> Vec<TaskId> {
         self.all_task_ids_with_prefix("")
     }
@@ -101,6 +108,9 @@ impl TaskGroup {
 
     /// Register all tasks in this group (and children) into the DAG.
     /// Tasks get qualified IDs and defaults applied.
+    ///
+    /// # Errors
+    /// Returns `DagError::DuplicateTaskId` if a qualified task ID already exists in the DAG.
     pub fn add_to_dag(&self, dag: &mut Dag) -> Result<Vec<TaskId>, DagError> {
         self.add_to_dag_with_prefix(dag, "")
     }

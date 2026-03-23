@@ -27,6 +27,7 @@ pub enum TaskState {
 
 impl TaskState {
     /// Returns true if the task is in a terminal state.
+    #[must_use]
     pub const fn is_finished(&self) -> bool {
         matches!(
             self,
@@ -39,11 +40,13 @@ impl TaskState {
     }
 
     /// Returns true if the task completed successfully.
+    #[must_use]
     pub const fn is_success(&self) -> bool {
         matches!(self, Self::Success)
     }
 
     /// Returns true if the task is in a failed state.
+    #[must_use]
     pub const fn is_failure(&self) -> bool {
         matches!(self, Self::Failed | Self::UpstreamFailed)
     }

@@ -35,6 +35,9 @@ impl Worker {
     /// The worker listens for execution requests and dispatches them to
     /// the appropriate `TaskExecutor`. Results are sent back to the
     /// coordinator's `ProcessId` (which may be on a different node).
+    ///
+    /// # Panics
+    /// Panics if a JSON result payload cannot be serialized to a string.
     pub async fn spawn(
         runtime: Arc<Runtime>,
         executors: HashMap<TaskId, Arc<dyn TaskExecutor>>,
@@ -66,10 +69,12 @@ impl Worker {
                         .and_then(|t| t.as_str())
                         .unwrap_or("")
                         .to_string();
-                    let attempt = json
-                        .get("attempt")
-                        .and_then(serde_json::Value::as_u64)
-                        .unwrap_or(1) as u32;
+                    let attempt = u32::try_from(
+                        json.get("attempt")
+                            .and_then(serde_json::Value::as_u64)
+                            .unwrap_or(1),
+                    )
+                    .unwrap_or(u32::MAX);
                     let reply_to = msg.from();
 
                     let tid = TaskId::new(&task_id_str);
@@ -142,6 +147,9 @@ impl Worker {
 }
 
 /// Build an `execute_task` message payload that a coordinator sends to a worker.
+///
+/// # Panics
+/// Panics if the JSON payload cannot be serialized to a string.
 #[must_use]
 pub fn build_execute_message(
     task_id: &TaskId,

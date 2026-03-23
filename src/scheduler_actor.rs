@@ -209,6 +209,9 @@ pub struct DagHandle {
 
 impl DagHandle {
     /// Get the current run state.
+    ///
+    /// # Errors
+    /// Returns `CallError` if the scheduler actor fails to respond.
     pub async fn run_state(&self) -> Result<DagRunState, CallError> {
         let reply = self
             .scheduler_ref
@@ -221,6 +224,9 @@ impl DagHandle {
     }
 
     /// Get the state of a specific task.
+    ///
+    /// # Errors
+    /// Returns `CallError` if the scheduler actor fails to respond.
     pub async fn task_state(&self, task_id: &TaskId) -> Result<TaskState, CallError> {
         let reply = self
             .scheduler_ref
@@ -236,6 +242,9 @@ impl DagHandle {
     }
 
     /// Get all task states.
+    ///
+    /// # Errors
+    /// Returns `CallError` if the scheduler actor fails to respond.
     pub async fn all_task_states(&self) -> Result<HashMap<TaskId, TaskState>, CallError> {
         let reply = self
             .scheduler_ref
@@ -248,12 +257,18 @@ impl DagHandle {
     }
 
     /// Check if the run is complete.
+    ///
+    /// # Errors
+    /// Returns `CallError` if the scheduler actor fails to respond.
     pub async fn is_complete(&self) -> Result<bool, CallError> {
         let state = self.run_state().await?;
         Ok(matches!(state, DagRunState::Success | DagRunState::Failed))
     }
 
     /// Wait for the DAG run to complete, polling at the given interval.
+    ///
+    /// # Errors
+    /// Returns `CallError` if the scheduler actor fails to respond.
     pub async fn wait_for_completion(
         &self,
         poll_interval: Duration,
