@@ -75,25 +75,40 @@ async fn main() {
 }
 ```
 
-## CLI Tool
+## Diagrams
 
-```bash
-# Render a DAG diagram (horizontal, left-to-right)
-cargo run --bin dag-cli -- diagram diamond
+Any `Dag` can render itself as an ASCII diagram:
 
-# Render vertically (top-to-bottom)
-cargo run --bin dag-cli -- diagram ml --vertical
+```rust
+let dag = Dag::new("my_pipeline");
+// ... add tasks and edges ...
 
-# Run a demo DAG
-cargo run --bin dag-cli -- demo
+// Horizontal (left-to-right, default)
+print!("{}", dag.diagram());
 
-# Launch interactive TUI
-cargo run --bin dag-cli -- tui
+// Vertical (top-to-bottom)
+print!("{}", dag.diagram_vertical());
 ```
+
+Output:
+
+```
+╔══════════════════╗
+║ DAG: my_pipeline ║
+╚══════════════════╝
+
+┌──────────────────┐     ┌──────────────────┐     ┌──────────────────┐
+│     extract      │     │    transform     │     │       load       │
+│                  │ ───▶│    retries=2     │ ───▶│                  │
+└──────────────────┘     └──────────────────┘     └──────────────────┘
+```
+
+Task boxes show trigger rules and retries when non-default. Fan-out/fan-in edges render as connectors between layers.
 
 ## Features
 
 - **Directed acyclic graph** -- topological sort, cycle detection, roots/leaves queries
+- **ASCII diagrams** -- `dag.diagram()` and `dag.diagram_vertical()` render any DAG
 - **10 task states** -- None, Scheduled, Queued, Running, Success, Failed, Skipped, UpstreamFailed, UpForRetry, Removed
 - **12 trigger rules** -- AllSuccess, AllFailed, AllDone, AllDoneMinOneSuccess, AllSkipped, OneSuccess, OneFailed, OneDone, NoneFailed, NoneFailedMinOneSuccess, NoneSkipped, Always
 - **Task groups** -- hierarchical namespacing with `TaskGroup` and `GroupId`
@@ -113,6 +128,7 @@ cargo run --bin dag-cli -- tui
 - [Trigger Rules](docs/trigger-rules.md) -- all 12 rules with truth tables
 - [Rebar Integration](docs/rebar-integration.md) -- actor model, message flow, XCom Agent
 - [Distributed Execution](docs/distributed.md) -- coordinator/worker scaling across machines
+- [Diagrams](docs/diagrams.md) -- ASCII diagram rendering API
 
 ## Dependencies
 
