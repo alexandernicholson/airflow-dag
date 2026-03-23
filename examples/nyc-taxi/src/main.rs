@@ -43,8 +43,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         "coordinator" => run_coordinator(&cli).await,
         "worker" => run_worker(&cli).await,
         "standalone" => run_standalone().await,
+        "single" => run_single().await,
         _ => {
-            eprintln!("Unknown role: {}. Use: coordinator, worker, standalone", cli.role);
+            eprintln!("Unknown role: {}. Use: coordinator, worker, standalone, single", cli.role);
             std::process::exit(1);
         }
     }
@@ -135,6 +136,77 @@ async fn run_standalone() -> Result<(), Box<dyn std::error::Error>> {
         println!("║                                        ║");
         println!("║  4 months of NYC taxi data processed   ║");
         println!("║  across 4 worker nodes + 1 coordinator ║");
+        println!("╚════════════════════════════════════════╝");
+    }
+
+    Ok(())
+}
+
+/// Single mode: one runtime, no workers, scheduler executes everything locally.
+/// Baseline for comparing against distributed execution.
+async fn run_single() -> Result<(), Box<dyn std::error::Error>> {
+    println!("╔══════════════════════════════════════════════════════════╗");
+    println!("║  ironpipe — NYC Taxi ETL Demo (single node, no workers) ║");
+    println!("╚══════════════════════════════════════════════════════════╝");
+    println!();
+
+    let start = Instant::now();
+
+    let rt = Arc::new(rebar::runtime::Runtime::new(1));
+
+    let dag = pipeline::build_dag();
+    let executors = pipeline::build_all_executors();
+
+    println!("DAG: {} ({} tasks)", dag.dag_id, dag.task_count());
+    let sorted = dag.topological_sort().unwrap();
+    println!("Topo order: {}", sorted.iter().map(|id| id.0.as_str()).collect::<Vec<_>>().join(" → "));
+    println!();
+    println!("Executing DAG (single runtime, no workers)...");
+    println!("─────────────────────────────────────────");
+
+    let handle = spawn_scheduler(
+        Arc::clone(&rt),
+        dag,
+        executors,
+        "nyc_taxi_single",
+        chrono::Utc::now(),
+    )
+    .await;
+
+    let final_state = handle
+        .wait_for_completion(
+            std::time::Duration::from_millis(50),
+            std::time::Duration::from_secs(60),
+        )
+        .await?;
+
+    println!("─────────────────────────────────────────");
+    println!();
+
+    let all_states = handle.all_task_states().await?;
+    println!("Task Results:");
+    for id in &sorted {
+        let state = all_states.get(id).copied().unwrap_or(TaskState::None);
+        let icon = match state {
+            TaskState::Success => "●",
+            TaskState::Failed => "✗",
+            _ => "○",
+        };
+        println!("  {icon} {:<20} {state}", id.0);
+    }
+
+    println!();
+    let elapsed = start.elapsed();
+    println!("DAG run: {final_state:?}");
+    println!("Total time: {:.2}s", elapsed.as_secs_f64());
+    println!();
+
+    if final_state == DagRunState::Success {
+        println!("╔════════════════════════════════════════╗");
+        println!("║  Pipeline completed successfully!      ║");
+        println!("║                                        ║");
+        println!("║  4 months processed on 1 runtime       ║");
+        println!("║  No workers — direct scheduler exec    ║");
         println!("╚════════════════════════════════════════╝");
     }
 
