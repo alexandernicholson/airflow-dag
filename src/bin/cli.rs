@@ -21,7 +21,7 @@ use ironpipe::{
 };
 
 #[derive(Parser)]
-#[command(name = "dag-cli", about = "Airflow-compatible DAG design and execution tool")]
+#[command(name = "dag-cli", about = "DAG task orchestration and visualization tool")]
 struct Cli {
     #[command(subcommand)]
     command: Option<Commands>,

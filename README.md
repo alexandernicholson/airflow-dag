@@ -1,6 +1,6 @@
 # ironpipe
 
-A DAG-based task orchestration engine for Rust, built on the [Rebar](https://github.com/alexandernicholson/rebar) actor runtime. Implements Airflow-compatible scheduling semantics — trigger rules, state machines, XCom, retries — as native Rust types with actor-based execution.
+A DAG-based task orchestration engine for Rust, built on the [Rebar](https://github.com/alexandernicholson/rebar) actor runtime. Production-grade scheduling semantics — trigger rules, state machines, XCom, retries — as native Rust types with actor-based execution.
 
 > `165 tests, 0 clippy warnings (pedantic)`
 

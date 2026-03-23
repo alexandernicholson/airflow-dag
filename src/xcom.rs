@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::task_id::TaskId;
 
 /// Cross-communication store for passing data between tasks.
-/// Airflow-compatible cross-task communication.
+/// Cross-task communication store for passing data between tasks.
 /// Nested map: `task_id` -> key -> value.
 #[derive(Debug, Clone, Default)]
 pub struct XComStore {
