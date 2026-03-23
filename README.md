@@ -1,16 +1,16 @@
-# airflow-dag
+# ironpipe
 
-Apache Airflow-compatible DAG semantics implemented in Rust on the [Rebar](https://github.com/alexandernicholson/rebar) actor runtime.
+A DAG-based task orchestration engine for Rust, built on the [Rebar](https://github.com/alexandernicholson/rebar) actor runtime. Implements Airflow-compatible scheduling semantics — trigger rules, state machines, XCom, retries — as native Rust types with actor-based execution.
 
 > `165 tests, 0 clippy warnings (pedantic)`
 
 ## Overview
 
-`airflow-dag` brings the scheduling model of Apache Airflow into Rust. It provides:
+`ironpipe` provides a production-grade DAG execution engine in Rust:
 
 - A type-safe DAG builder with dependency tracking and cycle detection
-- A task state machine that faithfully mirrors Airflow's `TaskInstance` lifecycle
-- All 12 Airflow trigger rules with correct evaluation semantics
+- A task state machine with 10 states mirroring production DAG engine semantics
+- All 12 trigger rules with correct evaluation semantics
 - Automatic upstream failure and skip propagation
 - XCom (cross-communication) for passing data between tasks
 - Actor-based execution on the Rebar runtime with per-task processes
@@ -21,7 +21,7 @@ Tasks are defined as pure data. Execution logic is provided by implementing the 
 ## Quick Example
 
 ```rust
-use airflow_dag::*;
+use ironpipe::*;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;

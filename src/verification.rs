@@ -1,4 +1,4 @@
-//! Mathematical verification tests for the airflow-dag state machine.
+//! Mathematical verification tests for the ironpipe state machine.
 //!
 //! Each test is structured as a mathematical proof: enumerate the full space
 //! of inputs and verify every element. Together they provide exhaustive

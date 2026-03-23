@@ -3,7 +3,7 @@ use std::time::Duration;
 use crate::task_id::{GroupId, TaskId};
 use crate::trigger_rule::TriggerRule;
 
-/// A task definition within a DAG. Mirrors Airflow's `BaseOperator` fields.
+/// A task definition within a DAG. Airflow-compatible task definition.
 #[derive(Debug, Clone)]
 pub struct Task {
     pub task_id: TaskId,

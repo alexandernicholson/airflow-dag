@@ -1,5 +1,5 @@
 /// State of a task instance within a DAG run.
-/// Mirrors Apache Airflow's task instance states.
+/// Airflow-compatible task instance states.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum TaskState {
     /// No state yet — initial state before scheduling.

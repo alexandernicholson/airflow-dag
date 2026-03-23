@@ -1,7 +1,7 @@
 use crate::task_state::TaskState;
 
 /// Trigger rule determining when a task should execute based on upstream states.
-/// Mirrors Apache Airflow's `TriggerRule` enum.
+/// Airflow-compatible trigger rules for task scheduling.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum TriggerRule {
     /// All upstream tasks succeeded (default).

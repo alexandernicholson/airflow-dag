@@ -16,7 +16,7 @@ pub struct TaskDefaults {
 }
 
 /// A hierarchical grouping of tasks within a DAG.
-/// Mirrors Airflow's `TaskGroup` concept.
+/// Airflow-compatible task grouping.
 #[derive(Debug, Clone)]
 pub struct TaskGroup {
     pub group_id: GroupId,

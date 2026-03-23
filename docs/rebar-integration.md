@@ -42,7 +42,7 @@ sequenceDiagram
 
 ## Actor Mapping
 
-| Airflow Concept | Rebar Primitive | Module |
+| Concept | Rebar Primitive | Module |
 |----------------|-----------------|--------|
 | Scheduler | `SchedulerServer` (GenServer) | `scheduler_actor.rs` |
 | Task Instance execution | `async_task_ctx` (Task process with context) | `scheduler_actor.rs` |
@@ -122,7 +122,7 @@ Rebar provides process-level isolation. Each task runs in its own spawned proces
 `spawn_scheduler` is the main entry point. It wires up the DAG, executors, runtime, and actors:
 
 ```rust
-use airflow_dag::*;
+use ironpipe::*;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;

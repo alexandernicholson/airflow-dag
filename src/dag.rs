@@ -5,7 +5,7 @@ use crate::task::Task;
 use crate::task_id::TaskId;
 
 /// A directed acyclic graph of tasks with dependency tracking.
-/// Mirrors Apache Airflow's DAG class.
+/// Airflow-compatible DAG with dependency tracking.
 #[derive(Debug, Clone)]
 pub struct Dag {
     pub dag_id: String,

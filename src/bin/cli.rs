@@ -15,7 +15,7 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, BorderType, Borders, Cell, Padding, Paragraph, Row, Table, Tabs};
 use ratatui::Terminal;
 
-use airflow_dag::{
+use ironpipe::{
     Dag, DagRun, DagRunState, Task, TaskContext, TaskExecutor, TaskId, TaskState, TriggerRule,
     spawn_scheduler,
 };
@@ -419,13 +419,13 @@ fn ui(f: &mut ratatui::Frame, app: &App) {
 fn render_title(f: &mut ratatui::Frame, area: Rect) {
     let title = Paragraph::new(Line::from(vec![
         Span::styled(
-            " airflow-dag ",
+            " ironpipe ",
             Style::default()
                 .fg(Color::Cyan)
                 .add_modifier(Modifier::BOLD),
         ),
         Span::styled(
-            "Airflow-compatible DAG engine for Rust + Rebar",
+            "DAG task orchestration engine for Rust + Rebar",
             Style::default().fg(Color::DarkGray),
         ),
     ]))
