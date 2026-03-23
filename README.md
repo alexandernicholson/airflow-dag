@@ -129,6 +129,7 @@ Task boxes show trigger rules and retries when non-default. Fan-out/fan-in edges
 - [Rebar Integration](docs/rebar-integration.md) -- actor model, message flow, XCom Agent
 - [Distributed Execution](docs/distributed.md) -- coordinator/worker scaling across machines
 - [Diagrams](docs/diagrams.md) -- ASCII diagram rendering API
+- [Benchmark](docs/benchmark.md) -- image processing pipeline, 3.5x speedup with CPU limits
 
 ## Dependencies
 
