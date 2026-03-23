@@ -38,7 +38,7 @@ graph TD
     EXEC --> TID
     EXEC --> XCOM
 
-    LIB --> XA["xcom_actor.rs<br>XComActor (GenServer)"]
+    LIB --> XA["xcom_actor.rs<br>XComAgent (Agent)"]
     XA --> XCOM
 
     LIB --> SA["scheduler_actor.rs<br>SchedulerServer, DagHandle,<br>spawn_scheduler"]
@@ -87,7 +87,7 @@ The `Task` struct holds the definition of a single unit of work -- its ID, trigg
 
 `scheduler_actor`, `xcom_actor`
 
-This layer maps the state machine onto Rebar's actor model. `SchedulerServer` is a `GenServer` whose state is a `DagRun`. It receives `Tick` casts and `task_completed` info messages, dispatches ready tasks as spawned Rebar processes, and updates state accordingly. `XComActor` is a `GenServer` that provides serialized access to shared XCom data. `DagHandle` is the user-facing async API.
+This layer maps the state machine onto Rebar's actor model. `SchedulerServer` is a `GenServer` whose state is a `DagRun`. It receives `Tick` casts and `task_completed` info messages, dispatches ready tasks via `async_task_ctx`, and updates state accordingly. `XComAgent` wraps a Rebar `Agent` for shared XCom state -- no custom message types needed, just closures via `get`/`cast`. `DagHandle` is the user-facing async API.
 
 ## Data Flow
 
@@ -100,7 +100,7 @@ graph LR
     SA -->|"spawn process"| TP2["Task Process 2"]
     TP1 -->|"task_completed msg"| SA
     TP2 -->|"task_completed msg"| SA
-    TP1 -->|"xcom push"| XA["XComActor<br>(GenServer)"]
+    TP1 -->|"xcom push"| XA["XComAgent<br>(Agent)"]
     SA -->|"xcom push"| XA
     SA -->|"call: GetRunState"| USER
 
@@ -114,11 +114,11 @@ graph LR
 
 ### Execution Lifecycle
 
-1. **Spawn** -- `spawn_scheduler()` creates a `DagRun`, an `XComActor`, and a `SchedulerServer`. It sends an initial `Tick` cast.
+1. **Spawn** -- `spawn_scheduler()` creates a `DagRun`, an `XComAgent`, and a `SchedulerServer`. It sends an initial `Tick` cast.
 
 2. **Tick** -- The scheduler calls `dag_run.tick()`, which propagates upstream failures/skips and returns the list of ready `TaskId`s.
 
-3. **Dispatch** -- For each ready task, the scheduler calls `mark_running()` and spawns a Rebar process that runs the corresponding `TaskExecutor::execute()`.
+3. **Dispatch** -- For each ready task, the scheduler calls `mark_running()` and spawns a Rebar process via `async_task_ctx` that runs the corresponding `TaskExecutor::execute()`.
 
 4. **Completion** -- When a task process finishes, it sends a `task_completed` JSON message back to the scheduler's `handle_info`. The scheduler calls `mark_success()` or `mark_failed()`, then ticks again.
 
